@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>SND-MXR // 白噪音控制台</title>
+
+    <style>
+        /* ============================================================
+           SND-MXR-1985  复古科幻控制台外观
+           配色沿用原有军绿 / 琥珀 / 磷光绿
+           ============================================================ */
+
+        :root {
+            --bg:        #080b09;
+            --panel:     #101511;
+            --panel-2:   #161d17;
+            --screen:    #0a0f0b;
+            --ink:       #d5e5cb;
+            --ink-dim:   #849080;
+            --amber:     #d0b16f;
+            --amber-hot: #ffd88a;
+            --phos:      #a8c78a;
+            --phos-hot:  #cdffa8;
+            --line:      #52634a;
+            --edge:      #718565;
+            --led-off:   #1d2a1e;
+            --alert:     #d97b5a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 24px 20px 48px;
+            background-color: var(--bg);
+            /* 远处的地平线辉光 */
+            background-image:
+                radial-gradient(120% 70% at 50% 118%, rgba(168, 199, 138, 0.10), transparent 62%),
+                radial-gradient(90% 55% at 50% -12%, rgba(208, 177, 111, 0.07), transparent 60%);
+            background-attachment: fixed;
+            color: var(--ink);
+            font-family: "Consolas", "Courier New", ui-monospace, monospace;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* ---------- CRT 扫描线 + 暗角（覆盖层，不拦鼠标） ---------- */
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 90;
+        }
+
+        body::before {
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0.22) 0px,
+                rgba(0, 0, 0, 0.22) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            opacity: 0.55;
+            mix-blend-mode: multiply;
+        }
+
+        body::after {
+            background: radial-gradient(115% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            max-width: 940px;
+            margin: 0 auto;
+        }
+
+        /* ============================================================
+           面板通用
+           ============================================================ */
+
+        .panel {
+            position: relative;
+            margin-bottom: 20px;
+            padding: 18px 20px 20px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 40%),
+                var(--panel);
+            border: 1px solid var(--line);
+            /* 四角切角，机箱感 */
+            clip-path: polygon(
+                12px 0, 100% 0, 100% calc(100% - 12px),
+                calc(100% - 12px) 100%, 0 100%, 0 12px
+            );
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.6),
+                0 0 26px rgba(168, 199, 138, 0.05) inset;
+        }
+
+        .panel::before {
+            /* 机箱铭牌 */
+            content: attr(data-label);
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 3px 12px 4px;
+            background: var(--line);
+            color: #0d120e;
+            font-size: 10px;
+            letter-spacing: 2.4px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .panel > *:first-child {
+            margin-top: 18px;
+        }
+
+        /* ============================================================
+           标题区
+           ============================================================ */
+
+        .masthead {
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            color: var(--amber);
+            font-size: clamp(22px, 4.4vw, 34px);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-shadow:
+                0 0 6px rgba(208, 177, 111, 0.55),
+                0 0 22px rgba(208, 177, 111, 0.22);
+            animation: flicker 5.5s infinite steps(1);
+        }
+
+        @keyframes flicker {
+            0%, 96%, 100% { opacity: 1; }
+            96.5%         { opacity: 0.72; }
+            97%           { opacity: 1; }
+            97.5%         { opacity: 0.85; }
+        }
+
+        .masthead .sub {
+            color: var(--ink-dim);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* ============================================================
+           状态行 / 自检日志
+           ============================================================ */
+
+        .statusbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 26px;
+            margin: 14px 0 0;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .statusbar .kv {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .statusbar .k {
+            color: var(--ink-dim);
+            text-transform: uppercase;
+        }
+
+        .statusbar .v {
+            color: var(--phos-hot);
+            text-shadow: 0 0 8px rgba(205, 255, 168, 0.35);
+        }
+
+        .bootlog {
+            margin: 12px 0 0;
+            padding: 10px 12px;
+            max-height: 96px;
+            overflow: hidden;
+            background: var(--screen);
+            border: 1px solid #26311f;
+            color: var(--ink-dim);
+            font-size: 11.5px;
+            line-height: 1.75;
+            letter-spacing: 0.4px;
+        }
+
+        .bootlog .ln {
+            opacity: 0;
+            animation: bootline 0.4s forwards;
+        }
+
+        .bootlog .ln.ok::after {
+            content: "OK";
+            float: right;
+            color: var(--phos-hot);
+        }
+
+        .bootlog .ln b {
+            color: var(--amber);
+            font-weight: normal;
+        }
+
+        @keyframes bootline {
+            from { opacity: 0; transform: translateX(-6px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        .bootlog .ln:nth-child(1) { animation-delay: 0.05s; }
+        .bootlog .ln:nth-child(2) { animation-delay: 0.28s; }
+        .bootlog .ln:nth-child(3) { animation-delay: 0.51s; }
+        .bootlog .ln:nth-child(4) { animation-delay: 0.74s; }
+        .bootlog .ln:nth-child(5) { animation-delay: 0.97s; }
+
+        .caret {
+            display: inline-block;
+            width: 8px;
+            height: 13px;
+            background: var(--phos-hot);
+            vertical-align: -2px;
+            animation: blink 1.05s steps(1) infinite;
+        }
+
+        @keyframes blink {
+            0%, 49%   { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        /* ============================================================
+           按钮 —— 航空拨动开关质感
+           ============================================================ */
+
+        button {
+            position: relative;
+            margin: 0;
+            padding: 9px 16px 8px;
+            background:
+                linear-gradient(180deg, #2a3527 0%, #1b231a 55%, #151c14 100%);
+            color: #c5d5ba;
+            border: 1px solid var(--edge);
+            border-radius: 2px;
+            font-family: inherit;
+            font-size: 12.5px;
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            cursor: pointer;
+            /* 顶部高光 + 底部厚度 */
+            box-shadow:
+                inset 0 1px 0 rgba(213, 229, 203, 0.16),
+                0 2px 0 #0a0e0a,
+                0 3px 8px rgba(0, 0, 0, 0.45);
+            transition: background 0.12s, color 0.12s, box-shadow 0.12s, transform 0.06s;
+        }
+
+        button:hover {
+            background:
+                linear-gradient(180deg, #3d4f39 0%, #2b3728 55%, #222b21 100%);
+            color: #ffffff;
+            border-color: var(--phos);
+            box-shadow:
+                inset 0 1px 0 rgba(213, 229, 203, 0.24),
+                0 0 12px rgba(168, 199, 138, 0.30),
+                0 2px 0 #0a0e0a;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow:
+                inset 0 2px 5px rgba(0, 0, 0, 0.6),
+                0 0 0 #0a0e0a;
+        }
+
+        button:focus-visible {
+            outline: 1px dashed var(--amber);
+            outline-offset: 2px;
+        }
+
+        /* 主控按钮（琥珀） */
+        button.primary {
+            color: var(--amber);
+            border-color: #8d7742;
+        }
+
+        button.primary:hover {
+            color: #14100a;
+            background: linear-gradient(180deg, var(--amber-hot), var(--amber));
+            border-color: var(--amber-hot);
+            box-shadow:
+                0 0 16px rgba(208, 177, 111, 0.45),
+                0 2px 0 #0a0e0a;
+            text-shadow: none;
+        }
+
+        /* 危险按钮 */
+        button.danger {
+            color: #e0a08a;
+            border-color: #7d4a38;
+        }
+
+        button.danger:hover {
+            color: #1a0d08;
+            background: linear-gradient(180deg, #e6a288, #c9714f);
+            border-color: #e6a288;
+            box-shadow: 0 0 14px rgba(217, 123, 90, 0.45), 0 2px 0 #0a0e0a;
+        }
+
+        button.tiny {
+            padding: 5px 10px 4px;
+            font-size: 10.5px;
+            letter-spacing: 1.2px;
+        }
+
+        /* 通道按钮的「播放中」态 */
+        button.playing {
+            color: #0b120b;
+            background: linear-gradient(180deg, var(--phos-hot), var(--phos));
+            border-color: var(--phos-hot);
+            box-shadow:
+                0 0 18px rgba(168, 199, 138, 0.55),
+                0 2px 0 #0a0e0a;
+            text-shadow: none;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* ============================================================
+           声音通道
+           ============================================================ */
+
+        #soundList {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .channel {
+            display: grid;
+            grid-template-columns: 92px 150px 1fr 58px;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 14px;
+            background:
+                linear-gradient(90deg, rgba(168, 199, 138, 0.045), transparent 45%),
+                var(--panel-2);
+            border: 1px solid #2c3a28;
+            border-left: 3px solid var(--line);
+            clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+            transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+        }
+
+        .channel:hover {
+            border-color: var(--line);
+            box-shadow: 0 0 20px rgba(168, 199, 138, 0.09) inset;
+        }
+
+        .channel.is-on {
+            border-left-color: var(--phos-hot);
+            box-shadow:
+                0 0 22px rgba(168, 199, 138, 0.14) inset,
+                0 0 12px rgba(168, 199, 138, 0.10);
+        }
+
+        .channel .id {
+            color: var(--ink-dim);
+            font-size: 10.5px;
+            letter-spacing: 1.4px;
+        }
+
+        .channel .id .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin-right: 7px;
+            border-radius: 50%;
+            background: var(--led-off);
+            border: 1px solid #33422f;
+            vertical-align: 1px;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+
+        .channel.is-on .id .dot {
+            background: var(--phos-hot);
+            box-shadow: 0 0 10px var(--phos-hot);
+        }
+
+        .channel .name {
+            color: var(--amber);
+            font-size: 13.5px;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .channel .meter-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* --- LED 电平条 --- */
+        .meter {
+            display: flex;
+            flex: 1;
+            gap: 3px;
+            min-width: 120px;
+        }
+
+        .meter i {
+            flex: 1;
+            height: 14px;
+            background: var(--led-off);
+            border: 1px solid #223021;
+            transition: background 0.08s, box-shadow 0.08s;
+        }
+
+        .meter i.on {
+            background: var(--phos);
+            box-shadow: 0 0 8px rgba(168, 199, 138, 0.65);
+        }
+
+        .meter i.on.hot {
+            background: var(--amber-hot);
+            box-shadow: 0 0 9px rgba(255, 216, 138, 0.8);
+        }
+
+        .meter i.on.peak {
+            background: var(--alert);
+            box-shadow: 0 0 10px rgba(217, 123, 90, 0.85);
+        }
+
+        /* --- 数字读数 --- */
+        .readout {
+            min-width: 62px;
+            padding: 3px 6px;
+            background: var(--screen);
+            border: 1px solid #26311f;
+            color: var(--phos-hot);
+            font-size: 12px;
+            text-align: right;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(205, 255, 168, 0.4);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* --- 滑块 --- */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 26px;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            background:
+                repeating-linear-gradient(90deg, #223021 0 5px, transparent 5px 8px),
+                #12180f;
+            border: 1px solid #2c3a28;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 24px;
+            margin-top: -9px;
+            background: linear-gradient(180deg, #e8d9a8, var(--amber));
+            border: 1px solid #6d5a30;
+            box-shadow: 0 0 10px rgba(208, 177, 111, 0.5);
+        }
+
+        input[type="range"]::-moz-range-track {
+            height: 8px;
+            background: #12180f;
+            border: 1px solid #2c3a28;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 13px;
+            height: 23px;
+            border-radius: 0;
+            background: linear-gradient(180deg, #e8d9a8, var(--amber));
+            border: 1px solid #6d5a30;
+        }
+
+        input[type="range"]:focus-visible {
+            outline: 1px dashed var(--amber);
+            outline-offset: 3px;
+        }
+
+        /* ============================================================
+           表单控件
+           ============================================================ */
+
+        input[type="text"],
+        select {
+            padding: 9px 11px;
+            background-color: #0d130e;
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: 1px;
+            font-family: inherit;
+            font-size: 13px;
+            letter-spacing: 0.8px;
+        }
+
+        input[type="text"]::placeholder {
+            color: #5f6b5b;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--phos);
+            box-shadow: 0 0 0 1px rgba(168, 199, 138, 0.3), 0 0 14px rgba(168, 199, 138, 0.16) inset;
+        }
+
+        input[type="text"] {
+            width: min(100%, 340px);
+        }
+
+        select {
+            min-width: 220px;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            max-width: 100%;
+            padding: 9px;
+            background: var(--screen);
+            border: 1px dashed var(--line);
+            color: var(--ink-dim);
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button {
+            margin-right: 12px;
+            padding: 6px 12px;
+            background: #202a20;
+            color: #c5d5ba;
+            border: 1px solid var(--edge);
+            font-family: inherit;
+            font-size: 11.5px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: #354532;
+            color: #fff;
+        }
+
+        /* ============================================================
+           布局辅助
+           ============================================================ */
+
+        h2 {
+            margin: 0 0 14px;
+            color: var(--phos);
+            font-size: 13px;
+            font-weight: normal;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        h2::before {
+            content: "▍";
+            margin-right: 8px;
+            color: var(--amber);
+        }
+
+        hr {
+            height: 1px;
+            margin: 26px 0;
+            border: 0;
+            background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 12px);
+        }
+
+        .stack {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stack + .stack {
+            margin-top: 14px;
+        }
+
+        small {
+            color: var(--ink-dim);
+            font-size: 11.5px;
+            letter-spacing: 0.6px;
+        }
+
+        /* ---------- 底部铭牌 ---------- */
+        .footer {
+            margin-top: 26px;
+            color: #5f6b5b;
+            font-size: 10.5px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* ---------- 窄屏 ---------- */
+        @media (max-width: 720px) {
+            .channel {
+                grid-template-columns: 1fr 58px;
+                grid-template-areas:
+                    "id   id"
+                    "name name"
+                    "meter readout";
+                gap: 10px 12px;
+            }
+
+            .channel .id       { grid-area: id; }
+            .channel .name     { grid-area: name; }
+            .channel .meter-wrap { grid-area: meter; }
+            .channel .readout  { grid-area: readout; }
+
+            input[type="text"],
+            select {
+                width: 100%;
+                min-width: 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            h1,
+            .caret,
+            .bootlog .ln {
+                animation: none;
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <div class="app">
+
+        <!-- ==================== 标题区 ==================== -->
+        <header class="masthead">
+            <h1>Sound Mixer</h1>
+            <div class="sub">SND&#8209;MXR &nbsp;//&nbsp; 环境噪音合成终端 &nbsp;//&nbsp; REV 1985.11</div>
+
+            <div class="statusbar">
+                <span class="kv"><span class="k">通道</span><span class="v" id="stChannels">03</span></span>
+                <span class="kv"><span class="k">在线</span><span class="v" id="stRunning">00</span></span>
+                <span class="kv"><span class="k">状态</span><span class="v" id="stState">待机</span></span>
+            </div>
+
+            <div class="bootlog" id="bootlog">
+                <div class="ln ok">系统自检 <b>MEM 640K</b></div>
+                <div class="ln ok">音频子系统初始化 <b>/DEV/AUDIO</b></div>
+                <div class="ln ok">载入通道表 <b>rain · radio · machine</b></div>
+                <div class="ln ok">预设存储挂载 <b>LOCALSTORAGE</b></div>
+                <div class="ln">就绪<span class="caret"></span></div>
+            </div>
+        </header>
+
+
+        <!-- ==================== 主控台 ==================== -->
+        <main class="panel" data-label="控制台 / CONSOLE">
+
+            <div class="btn-row">
+                <button class="primary" onclick="playAll()">▶ 全部播放</button>
+                <button onclick="pauseAll()">❚❚ 全部暂停</button>
+                <button class="tiny" onclick="muteAll()">静音全部</button>
+            </div>
+
+            <div id="soundList"></div>
+
+        </main>
+
+
+        <!-- ==================== 添加声音 ==================== -->
+        <section class="panel" data-label="装载舱 / UPLOAD">
+
+            <h2>添加声音</h2>
+
+            <div class="stack">
+                <input type="file" id="fileInput" accept="audio/*" multiple>
+            </div>
+
+            <div class="stack">
+                <button onclick="addSounds()">⤒ 装载所选音频</button>
+                <small>支持 mp3 / wav / ogg，可多选；装载后自动循环</small>
+            </div>
+
+        </section>
+
+
+        <!-- ==================== 预设 ==================== -->
+        <section class="panel" data-label="预设库 / MEMORY">
+
+            <h2>预设</h2>
+
+            <div class="stack">
+                <input
+                    type="text"
+                    id="presetName"
+                    placeholder="预设名称，例如：暴雨中的工厂"
+                >
+                <button class="primary" onclick="savePreset()">保存当前预设</button>
+            </div>
+
+            <hr>
+
+            <div class="stack">
+                <select id="presetSelect">
+                    <option value="">选择一个预设</option>
+                </select>
+                <button onclick="loadPreset()">加载</button>
+                <button class="danger" onclick="deletePreset()">删除</button>
+            </div>
+
+        </section>
+
+
+        <div class="footer">SND-MXR-1985 · 白噪音环境合成终端 · 全部音频本地播放</div>
+
+    </div>
+
+
+    <script>
+        // =========================================
+        // 声音数据
+        // =========================================
+
+        const sounds = [
+            {
+                id: "sound-001",
+                name: "雨声",
+                fileName: "rain.mp3",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-002",
+                name: "无线电",
+                audio: new Audio("radio.mp3")
+            },
+            {
+                id: "sound-003",
+                name: "机械嗡鸣",
+                audio: new Audio("machine.mp3")
+            }
+        ];
+
+        // 第一条原来只有文件名、没有 audio 对象，这里补齐
+        sounds[0].audio = new Audio(sounds[0].fileName);
+        sounds[0].audio.loop = sounds[0].loop;
+        sounds[0].audio.volume = sounds[0].volume;
+
+        // 所有声音循环播放
+        sounds.forEach(sound => {
+            sound.audio.loop = true;
+            sound.audio.volume = sound.audio.volume ?? 0.5;
+        });
+
+        // 电平条格数
+        const METER_SEGMENTS = 18;
+
+
+        // =========================================
+        // 面板状态
+        // =========================================
+
+        function updateStatus() {
+
+            const running = sounds.filter(s => !s.audio.paused).length;
+
+            document.getElementById("stChannels").textContent =
+                String(sounds.length).padStart(2, "0");
+
+            document.getElementById("stRunning").textContent =
+                String(running).padStart(2, "0");
+
+            document.getElementById("stState").textContent =
+                running === 0 ? "待机" : (running === sounds.length ? "全线输出" : "部分输出");
+
+        }
+
+
+        // =========================================
+        // 显示声音列表
+        // =========================================
+
+        function renderSounds() {
+
+            const list = document.getElementById("soundList");
+
+            list.innerHTML = "";
+
+            sounds.forEach((sound, index) => {
+
+                const volume = Math.round(sound.audio.volume * 100);
+
+                const div = document.createElement("div");
+
+                div.className = "channel";
+
+                div.dataset.index = index;
+
+                // 电平条
+                let segments = "";
+
+                for (let i = 0; i < METER_SEGMENTS; i++) {
+                    segments += "<i></i>";
+                }
+
+                div.innerHTML = `
+                    <span class="id"><span class="dot"></span>CH${String(index + 1).padStart(2, "0")}</span>
+
+                    <span class="name" title="${sound.name}">${sound.name}</span>
+
+                    <span class="meter-wrap">
+                        <span class="meter">${segments}</span>
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value="${volume}"
+                            aria-label="${sound.name} 音量"
+                            oninput="changeVolume(${index}, this.value)"
+                        >
+                    </span>
+
+                    <span class="readout" id="volume-${index}">${volume}%</span>
+
+                    <button
+                        class="tiny"
+                        id="toggle-${index}"
+                        onclick="toggleSound(${index})"
+                    >▶ 播放</button>
+                `;
+
+                list.appendChild(div);
+
+            });
+
+            // 恢复每条通道的按钮文字与电平
+            sounds.forEach((sound, index) => {
+
+                syncChannel(sound, index);
+
+                paintMeter(index, sound.audio.volume);
+
+            });
+
+            updateStatus();
+
+        }
+
+
+        // =========================================
+        // 同步单条通道的显示
+        // =========================================
+
+        function syncChannel(sound, index) {
+
+            const row = document.querySelector(`.channel[data-index="${index}"]`);
+
+            if (!row) {
+                return;
+            }
+
+            const button = document.getElementById("toggle-" + index);
+
+            const playing = !sound.audio.paused && sound.audio.volume > 0;
+
+            row.classList.toggle("is-on", !sound.audio.paused);
+
+            if (button) {
+                button.textContent = sound.audio.paused ? "▶ 播放" : "❚❚ 暂停";
+                button.classList.toggle("playing", !sound.audio.paused);
+            }
+
+        }
+
+
+        // =========================================
+        // 电平条
+        // =========================================
+
+        function paintMeter(index, volume) {
+
+            const row = document.querySelector(`.channel[data-index="${index}"]`);
+
+            if (!row) {
+                return;
+            }
+
+            const segs = row.querySelectorAll(".meter i");
+
+            const lit = Math.round(volume * METER_SEGMENTS);
+
+            segs.forEach((seg, i) => {
+
+                seg.classList.toggle("on", i < lit);
+
+                seg.classList.toggle("hot", i < lit && i >= METER_SEGMENTS * 0.72);
+
+                seg.classList.toggle("peak", i < lit && i >= METER_SEGMENTS * 0.9);
+
+            });
+
+        }
+
+
+        // =========================================
+        // 播放 / 暂停
+        // =========================================
+
+        function toggleSound(index) {
+
+            const audio = sounds[index].audio;
+
+            if (audio.paused) {
+
+                audio.play();
+
+            } else {
+
+                audio.pause();
+
+            }
+
+        }
+
+
+        // =========================================
+        // 修改音量
+        // =========================================
+
+        function changeVolume(index, value) {
+
+            sounds[index].audio.volume = value / 100;
+
+            document.getElementById("volume-" + index).textContent = value + "%";
+
+            paintMeter(index, value / 100);
+
+            syncChannel(sounds[index], index);
+
+            updateStatus();
+
+        }
+
+
+        // =========================================
+        // 全部播放 / 全部暂停 / 静音
+        // =========================================
+
+        function playAll() {
+
+            sounds.forEach(sound => {
+                sound.audio.play();
+            });
+
+        }
+
+
+        function pauseAll() {
+
+            sounds.forEach(sound => {
+                sound.audio.pause();
+            });
+
+        }
+
+
+        function muteAll() {
+
+            sounds.forEach((sound, index) => {
+
+                sound.audio.volume = 0;
+
+                const slider = document.querySelector(`.channel[data-index="${index}"] input[type="range"]`);
+
+                if (slider) {
+                    slider.value = 0;
+                }
+
+                document.getElementById("volume-" + index).textContent = "0%";
+
+                paintMeter(index, 0);
+
+            });
+
+            updateStatus();
+
+        }
+
+
+        // =========================================
+        // 动态添加声音
+        // =========================================
+
+        function addSounds() {
+
+            const input = document.getElementById("fileInput");
+
+            if (input.files.length === 0) {
+                alert("请先选择音频文件");
+                return;
+            }
+
+            for (const file of input.files) {
+
+                const audio = new Audio(
+                    URL.createObjectURL(file)
+                );
+
+                audio.loop = true;
+                audio.volume = 0.5;
+
+                sounds.push({
+
+                    name: file.name,
+                    audio: audio
+
+                });
+
+            }
+
+            renderSounds();
+
+            // 清空选择框
+            input.value = "";
+
+        }
+
+
+        // =========================================
+        // 预设
+        // =========================================
+
+        function savePreset() {
+
+            const name =
+                document.getElementById("presetName").value.trim();
+
+            if (name === "") {
+
+                alert("请先输入预设名称");
+
+                return;
+
+            }
+
+            // 读取以前保存的预设
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            // 保存每个声音的音量
+            const preset = {};
+
+            sounds.forEach(sound => {
+
+                preset[sound.name] = sound.audio.volume;
+
+            });
+
+            presets[name] = preset;
+
+            // 保存到浏览器
+            localStorage.setItem(
+                "soundPresets",
+                JSON.stringify(presets)
+            );
+
+            loadPresetList();
+
+            document.getElementById("presetName").value = "";
+
+            alert("预设已保存");
+
+        }
+
+
+        // =========================================
+        // 读取预设列表
+        // =========================================
+
+        function loadPresetList() {
+
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            const select =
+                document.getElementById("presetSelect");
+
+            select.innerHTML =
+                '<option value="">选择一个预设</option>';
+
+            for (const name in presets) {
+
+                const option =
+                    document.createElement("option");
+
+                option.value = name;
+                option.textContent = name;
+
+                select.appendChild(option);
+
+            }
+
+        }
+
+
+        // =========================================
+        // 加载预设
+        // =========================================
+
+        function loadPreset() {
+
+            const name =
+                document.getElementById("presetSelect").value;
+
+            if (name === "") {
+                return;
+            }
+
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            const preset = presets[name];
+
+            sounds.forEach(sound => {
+
+                if (preset[sound.name] !== undefined) {
+
+                    sound.audio.volume = preset[sound.name];
+
+                }
+
+            });
+
+            renderSounds();
+
+        }
+
+
+        // =========================================
+        // 删除预设
+        // =========================================
+
+        function deletePreset() {
+
+            const name =
+                document.getElementById("presetSelect").value;
+
+            if (name === "") {
+                return;
+            }
+
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            delete presets[name];
+
+            localStorage.setItem(
+                "soundPresets",
+                JSON.stringify(presets)
+            );
+
+            loadPresetList();
+
+        }
+
+
+        // =========================================
+        // 初始化
+        // =========================================
+
+        renderSounds();
+
+        loadPresetList();
+
+
+        // =========================================
+        // 状态跟随音频事件刷新
+        // =========================================
+
+        sounds.forEach((sound, index) => {
+
+            sound.audio.addEventListener("play", () => {
+                syncChannel(sound, index);
+                updateStatus();
+            });
+
+            sound.audio.addEventListener("pause", () => {
+                syncChannel(sound, index);
+                updateStatus();
+            });
+
+            sound.audio.addEventListener("ended", () => {
+                syncChannel(sound, index);
+                updateStatus();
+            });
+
+        });
+
+    </script>
+
+</body>
+
+</html>
