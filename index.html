@@ -635,7 +635,7 @@
 
         .channel {
             display: grid;
-            grid-template-columns: 92px 150px 1fr 58px;
+            grid-template-columns:92px 150px 1fr 58px;
             align-items: center;
             gap: 14px;
             padding: 12px 14px;
@@ -919,6 +919,52 @@
 
 
         /* ============================================================
+           分类筛选
+           ============================================================ */
+
+        .cat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 16px 0 14px;
+        }
+
+        .cat {
+            padding: 5px 11px 4px;
+            background: var(--screen);
+            color: var(--ink-dim);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: none;
+            font-family: inherit;
+            font-size: 11px;
+            letter-spacing: 1.2px;
+            text-transform: none;
+            cursor: pointer;
+        }
+
+        .cat:hover {
+            background: var(--panel-2);
+            color: var(--ink);
+            border-color: var(--phos);
+            box-shadow: none;
+        }
+
+        .cat.is-active {
+            background: linear-gradient(180deg, var(--phos-hot), var(--phos));
+            color: var(--on-playing);
+            border-color: var(--phos-hot);
+            text-shadow: none;
+            box-shadow: none;
+        }
+
+        .cat-count {
+            margin-left: 6px;
+            opacity: 0.7;
+        }
+
+
+        /* ============================================================
            布局辅助
            ============================================================ */
 
@@ -1040,6 +1086,8 @@
                 <button class="tiny" onclick="muteAll()">静音全部</button>
             </div>
 
+            <div class="cat-row" id="catRow"></div>
+
             <div id="soundList"></div>
 
         </main>
@@ -1118,35 +1166,41 @@
         // 音频清单
         // =========================================
         //
-        // 每条音频统一用这 5 个字段描述，新增音频时照着复制一份即可：
+        // 每条音频统一用这 6 个字段描述，新增音频时照着复制一份即可：
         //
         //     id        唯一标识，不要和别的重复
         //     name      界面上显示的名字
+        //     category  分类，用于筛选。名字可以随便起：
+        //               常规 / 机械 / 自然 / 某个游戏或作品名…都行，
+        //               列表上方会自动出现对应的筛选按钮。
         //     fileName  sounds/ 里的文件名
         //     volume    音量，0 到 1（0.5 即 50%）
         //     loop      是否循环播放
         //
-        // 播放用的 audio 对象不用自己写，下面的初始化会自动创建。
+        // 播放用的 audio 对象和分类按钮都不用自己写，脚本会自动处理。
         //
         const sounds = [
             {
                 id: "sound-001",
                 name: "雨声",
-                fileName: "rain.mp3",
+                category: "自然",
+                fileName: "rain.ogg",
                 volume: 0.5,
                 loop: true
             },
             {
                 id: "sound-002",
-                name: "无线电",
+                name: "无线电底噪",
+                category: "常规",
                 fileName: "radio.mp3",
                 volume: 0.5,
                 loop: true
             },
             {
                 id: "sound-003",
-                name: "机械嗡鸣",
-                fileName: "machine.mp3",
+                name: "雨落棚顶",
+                category: "自然",
+                fileName: "rain_with_plastic.mp3",
                 volume: 0.5,
                 loop: true
             },
@@ -1154,6 +1208,7 @@
             {
                 id: "sound-004",
                 name: "电弧炉",
+                category: "机械",
                 fileName: "arc.ogg",
                 volume: 0.5,
                 loop: true
@@ -1161,6 +1216,7 @@
             {
                 id: "sound-005",
                 name: "装配厂",
+                category: "机械",
                 fileName: "assembler.ogg",
                 volume: 0.5,
                 loop: true
@@ -1168,6 +1224,7 @@
             {
                 id: "sound-006",
                 name: "洗矿厂",
+                category: "机械",
                 fileName: "bath.ogg",
                 volume: 0.5,
                 loop: true
@@ -1175,6 +1232,7 @@
             {
                 id: "sound-007",
                 name: "电力高炉",
+                category: "机械",
                 fileName: "boiler.ogg",
                 volume: 0.5,
                 loop: true
@@ -1182,6 +1240,7 @@
             {
                 id: "sound-008",
                 name: "离心机",
+                category: "机械",
                 fileName: "centrifuge.ogg",
                 volume: 0.5,
                 loop: true
@@ -1189,6 +1248,7 @@
             {
                 id: "sound-009",
                 name: "反应釜",
+                category: "机械",
                 fileName: "chemical.ogg",
                 volume: 0.5,
                 loop: true
@@ -1196,6 +1256,7 @@
             {
                 id: "sound-010",
                 name: "内燃引擎",
+                category: "机械",
                 fileName: "combustion.ogg",
                 volume: 0.5,
                 loop: true
@@ -1203,10 +1264,93 @@
             {
                 id: "sound-011",
                 name: "压缩机",
+                category: "机械",
                 fileName: "compressor.ogg",
                 volume: 0.5,
                 loop: true
+            },
+            {
+                id: "sound-012",
+                name: "计算阵列",
+                category: "机械",
+                fileName: "computation.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-013",
+                name: "冷冻机",
+                category: "机械",
+                fileName: "cooling.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-014",
+                name: "电解机",
+                category: "机械",
+                fileName: "electrolyzer.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-015",
+                name: "燃烧室",
+                category: "机械",
+                fileName: "fire.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-016",
+                name: "电炉",
+                category: "机械",
+                fileName: "furnace.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-017",
+                name: "研磨机",
+                category: "机械",
+                fileName: "macerator.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-018",
+                name: "矿机",
+                category: "机械",
+                fileName: "miner.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-019",
+                name: "搅拌机",
+                category: "机械",
+                fileName: "mixer.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-020",
+                name: "水泵",
+                category: "机械",
+                fileName: "pump.ogg",
+                volume: 0.5,
+                loop: true
             }
+            /*
+            {
+                id: "sound-0",
+                name: "",
+                category: "常规",
+                fileName: "",
+                volume: 0.5,
+                loop: true
+            }
+            */
         ];
 
 
@@ -1485,6 +1629,104 @@
 
 
         // =========================================
+        // 分类筛选
+        // =========================================
+
+        // 当前选中的分类，「全部」表示不筛选
+        let activeCategory = "全部";
+
+
+        // 分类名按清单里的出现顺序排列，第一个永远是「全部」
+        function categoryList() {
+
+            const names = ["全部"];
+
+            sounds.forEach(sound => {
+
+                const category = sound.category || "常规";
+
+                if (!names.includes(category)) {
+                    names.push(category);
+                }
+
+            });
+
+            return names;
+
+        }
+
+
+        function countInCategory(category) {
+
+            if (category === "全部") {
+                return sounds.length;
+            }
+
+            return sounds.filter(s => (s.category || "常规") === category).length;
+
+        }
+
+
+        // 这条通道在当前筛选下要不要显示
+        function isVisible(sound) {
+
+            return activeCategory === "全部" ||
+                (sound.category || "常规") === activeCategory;
+
+        }
+
+
+        function renderCategories() {
+
+            const row = document.getElementById("catRow");
+
+            if (!row) {
+                return;
+            }
+
+            const names = categoryList();
+
+            // 选中的分类可能已经不存在了（比如那批音频被删了），退回「全部」
+            if (!names.includes(activeCategory)) {
+                activeCategory = "全部";
+            }
+
+            row.innerHTML = "";
+
+            names.forEach(category => {
+
+                const button = document.createElement("button");
+
+                button.type = "button";
+                button.className =
+                    "cat" + (category === activeCategory ? " is-active" : "");
+                button.setAttribute(
+                    "aria-pressed",
+                    category === activeCategory ? "true" : "false"
+                );
+                button.setAttribute("aria-label", "分类：" + category);
+
+                button.innerHTML =
+                    escapeHtml(category) +
+                    '<span class="cat-count">' + countInCategory(category) + "</span>";
+
+                button.onclick = () => {
+
+                    activeCategory = category;
+
+                    renderCategories();
+                    renderSounds();
+
+                };
+
+                row.appendChild(button);
+
+            });
+
+        }
+
+
+        // =========================================
         // 显示声音列表
         // =========================================
 
@@ -1495,6 +1737,13 @@
             list.innerHTML = "";
 
             sounds.forEach((sound, index) => {
+
+                // 分类筛选：不匹配的通道不渲染。
+                // index 仍然是它在总清单里的原始下标，
+                // 所以按钮上的 changeVolume(3, …) 依然指向正确的通道。
+                if (!isVisible(sound)) {
+                    return;
+                }
 
                 const volume = Math.round(sound.volume * 100);
 
@@ -1855,6 +2104,7 @@
 
                     id: makeSoundId(),
                     name: file.name,
+                    category: "常规",
                     fileName: "",
                     volume: 0.5,
                     loop: true,
@@ -1871,6 +2121,8 @@
                 added.push({ sound: sound, file: file });
 
             }
+
+            renderCategories();
 
             renderSounds();
 
@@ -2140,6 +2392,8 @@
         // 初始化
         // =========================================
 
+        renderCategories();
+
         renderSounds();
 
         loadPresetList();
@@ -2152,8 +2406,8 @@
 
         if (bootEngine) {
             bootEngine.textContent = LOCAL_FILE_MODE
-                ? "<audio> 标签（循环有停顿）"
-                : "WEB AUDIO（无缝循环）";
+                ? "<audio> [NOLOOP]"
+                : "WEB AUDIO[LOOP]";
         }
 
         const bootChannels = document.getElementById("bootChannels");
