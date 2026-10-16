@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>SND-MXR // 白噪音控制台</title>
+
+    <script>
+        // 尽早套用已保存的界面风格，避免刷新时先闪一下默认皮肤
+        try {
+            var savedTheme = localStorage.getItem("uiTheme");
+            if (savedTheme) {
+                document.documentElement.setAttribute("data-theme", savedTheme);
+            }
+        } catch (e) {}
+    </script>
+
+    <style>
+        /* ============================================================
+           SND-MXR-1985  复古科幻控制台外观
+           配色沿用原有军绿 / 琥珀 / 磷光绿
+           ============================================================ */
+
+        :root {
+            /* ---------- 核心色板 ---------- */
+            --bg:         #080b09;
+            --panel:      #101511;
+            --panel-2:    #161d17;
+            --screen:     #0a0f0b;
+            --ink:        #d5e5cb;
+            --ink-dim:    #849080;
+            --phos:       #a8c78a;
+            --phos-hot:   #cdffa8;
+            --amber:      #d0b16f;
+            --amber-hot:  #ffd88a;
+            --line:       #52634a;
+            --edge:       #718565;
+            --led-off:    #1d2a1e;
+            --alert:      #d97b5a;
+
+            /* 上面几个主色的 rgb 写法，专门给带透明度的发光效果用。
+               换肤时务必和上面的颜色成对修改，否则发光颜色会和主色对不上。 */
+            --phos-rgb:      168, 199, 138;
+            --phos-hot-rgb:  205, 255, 168;
+            --amber-rgb:     208, 177, 111;
+            --amber-hot-rgb: 255, 216, 138;
+            --ink-rgb:       213, 229, 203;
+            --alert-rgb:     217, 123, 90;
+
+            /* ---------- 阴影与覆盖层 ---------- */
+            --sheen:        rgba(255, 255, 255, 0.025);
+            --shade:        rgba(0, 0, 0, 0.45);
+            --shade-strong: rgba(0, 0, 0, 0.6);
+            --scanline:     rgba(0, 0, 0, 0.22);
+            --vignette:     rgba(0, 0, 0, 0.55);
+
+            /* ---------- 按钮 ---------- */
+            --btn-top:       #2a3527;
+            --btn-mid:       #1b231a;
+            --btn-bot:       #151c14;
+            --btn-hover-top: #3d4f39;
+            --btn-hover-mid: #2b3728;
+            --btn-hover-bot: #222b21;
+            --btn-ink:       #c5d5ba;
+            --btn-ink-hot:   #ffffff;
+            --depth:         #0a0e0a;
+            --primary-line:  #8d7742;
+            --on-primary:    #14100a;
+            --danger-ink:    #e0a08a;
+            --danger-line:   #7d4a38;
+            --danger-hi:     #e6a288;
+            --danger-lo:     #c9714f;
+            --on-danger:     #1a0d08;
+            --on-playing:    #0b120b;
+
+            /* ---------- 表单 / 滑块 / 读数窗 ---------- */
+            --field:        #0d130e;
+            --placeholder:  #5f6b5b;
+            --track:        #12180f;
+            --track-line:   #2c3a28;
+            --tick:         #223021;
+            --thumb-hi:     #e8d9a8;
+            --thumb-line:   #6d5a30;
+            --readout-line: #26311f;
+            --badge-line:   #33422f;
+            --file-btn:     #202a20;
+            --file-btn-hot: #354532;
+            --label-ink:    #0d120e;
+
+            /* ---------- 形状与质感（换肤也可以调这几项） ---------- */
+            --font: "Consolas", "Courier New", ui-monospace, monospace;
+            --corner: 12px;
+            --corner-sm: 8px;
+            --radius: 2px;
+            --scan-opacity: 0.55;
+            --vignette-opacity: 1;
+            --corner-clip: polygon(
+                var(--corner) 0, 100% 0, 100% calc(100% - var(--corner)),
+                calc(100% - var(--corner)) 100%, 0 100%, 0 var(--corner)
+            );
+            --corner-clip-sm: polygon(
+                var(--corner-sm) 0, 100% 0, 100% 100%, 0 100%, 0 var(--corner-sm)
+            );
+        }
+
+        /* ============================================================
+           皮肤（变量层换肤）
+           下面的每一块只覆盖颜色；没写的会自动继承 :root。
+           新增皮肤 = 复制一块改颜色 + 在脚本的 THEMES 数组里加一条。
+           ============================================================ */
+
+        [data-theme="amber"] {
+            --bg: #0b0805;
+            --panel: #14100a;
+            --panel-2: #1a1409;
+            --screen: #100c06;
+            --ink: #ecd9a8;
+            --ink-dim: #9c8452;
+            --phos: #d8a848;
+            --phos-hot: #ffd071;
+            --amber: #d8a848;
+            --amber-hot: #ffd071;
+            --line: #5d4a1f;
+            --edge: #7d6630;
+            --led-off: #211a0d;
+            --alert: #e07a44;
+            --phos-rgb: 216, 168, 72;
+            --phos-hot-rgb: 255, 208, 113;
+            --amber-rgb: 216, 168, 72;
+            --amber-hot-rgb: 255, 208, 113;
+            --ink-rgb: 236, 217, 168;
+            --alert-rgb: 224, 122, 68;
+            --sheen: rgba(255, 255, 255, 0.03);
+            --shade: rgba(0, 0, 0, 0.45);
+            --shade-strong: rgba(0, 0, 0, 0.6);
+            --scanline: rgba(0, 0, 0, 0.28);
+            --vignette: rgba(0, 0, 0, 0.6);
+            --btn-top: #2b2210;
+            --btn-mid: #211a0c;
+            --btn-bot: #191407;
+            --btn-hover-top: #3d3016;
+            --btn-hover-mid: #2f2511;
+            --btn-hover-bot: #241d0d;
+            --btn-ink: #d9c184;
+            --btn-ink-hot: #fff4d9;
+            --depth: #0a0703;
+            --primary-line: #8a6f2c;
+            --on-primary: #17110a;
+            --danger-ink: #e8a184;
+            --danger-line: #7d4a38;
+            --danger-hi: #e07a44;
+            --danger-lo: #c05f30;
+            --on-danger: #1a0d08;
+            --on-playing: #100c06;
+            --field: #100c06;
+            --placeholder: #9c8452;
+            --track: #16110a;
+            --track-line: #4a3b1a;
+            --tick: #2b2210;
+            --thumb-hi: #ffd071;
+            --thumb-line: #8a6f2c;
+            --readout-line: #4a3b1a;
+            --badge-line: #4a3b1a;
+            --file-btn: #241d0d;
+            --file-btn-hot: #3d3016;
+            --label-ink: #ecd9a8;
+            --font: "Consolas", "Courier New", ui-monospace, monospace;
+            --corner: 12px;
+            --corner-sm: 8px;
+            --radius: 2px;
+            --scan-opacity: 0.55;
+            --vignette-opacity: 1;
+            --corner-clip: polygon( var(--corner) 0, 100% 0, 100% calc(100% - var(--corner)), calc(100% - var(--corner)) 100%, 0 100%, 0 var(--corner) );
+            --corner-clip-sm: polygon( var(--corner-sm) 0, 100% 0, 100% 100%, 0 100%, 0 var(--corner-sm) );
+        }
+
+        [data-theme="minimal"] {
+            --bg: #eceae4;
+            --panel: #f7f6f2;
+            --panel-2: #ffffff;
+            --screen: #ffffff;
+            --ink: #23282a;
+            --ink-dim: #6b7377;
+            --phos: #2f6b4f;
+            --phos-hot: #18774f;
+            --amber: #9a6b1f;
+            --amber-hot: #c08a2a;
+            --line: #b9b5aa;
+            --edge: #8f8b80;
+            --led-off: #d5d2c8;
+            --alert: #b3452c;
+            --phos-rgb: 47, 107, 79;
+            --phos-hot-rgb: 24, 119, 79;
+            --amber-rgb: 154, 107, 31;
+            --amber-hot-rgb: 192, 138, 42;
+            --ink-rgb: 35, 40, 42;
+            --alert-rgb: 179, 69, 44;
+            --sheen: rgba(255, 255, 255, 0.7);
+            --shade: rgba(0, 0, 0, 0.12);
+            --shade-strong: rgba(0, 0, 0, 0.18);
+            --scanline: rgba(0, 0, 0, 0.1);
+            --vignette: rgba(0, 0, 0, 0.12);
+            --btn-top: #ffffff;
+            --btn-mid: #f2f0ea;
+            --btn-bot: #e6e3da;
+            --btn-hover-top: #ffffff;
+            --btn-hover-mid: #eceae2;
+            --btn-hover-bot: #dedbd1;
+            --btn-ink: #33393c;
+            --btn-ink-hot: #000000;
+            --depth: #cfccc2;
+            --primary-line: #9a6b1f;
+            --on-primary: #ffffff;
+            --danger-ink: #8d3b26;
+            --danger-line: #b3452c;
+            --danger-hi: #c25a41;
+            --danger-lo: #b3452c;
+            --on-danger: #ffffff;
+            --on-playing: #ffffff;
+            --field: #ffffff;
+            --placeholder: #8a9195;
+            --track: #e2dfd6;
+            --track-line: #b9b5aa;
+            --tick: #cfccc2;
+            --thumb-hi: #c08a2a;
+            --thumb-line: #9a6b1f;
+            --readout-line: #b9b5aa;
+            --badge-line: #b9b5aa;
+            --file-btn: #eeebe3;
+            --file-btn-hot: #e2dfd6;
+            --label-ink: #3a3f42;
+            --font: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+            --corner: 6px;
+            --corner-sm: 4px;
+            --radius: 6px;
+            --scan-opacity: 0;
+            --vignette-opacity: 0;
+            --corner-clip: polygon( var(--corner) 0, 100% 0, 100% calc(100% - var(--corner)), calc(100% - var(--corner)) 100%, 0 100%, 0 var(--corner) );
+            --corner-clip-sm: polygon( var(--corner-sm) 0, 100% 0, 100% 100%, 0 100%, 0 var(--corner-sm) );
+        }
+
+        [data-theme="neon"] {
+            --bg: #05070f;
+            --panel: #0a0f1c;
+            --panel-2: #0f1526;
+            --screen: #060a14;
+            --ink: #cfe6f5;
+            --ink-dim: #6d7f95;
+            --phos: #35e0d8;
+            --phos-hot: #8ffff5;
+            --amber: #ff5fd2;
+            --amber-hot: #ffa8e8;
+            --line: #1d3a52;
+            --edge: #2e5f80;
+            --led-off: #10202e;
+            --alert: #ff6b6b;
+            --phos-rgb: 53, 224, 216;
+            --phos-hot-rgb: 143, 255, 245;
+            --amber-rgb: 255, 95, 210;
+            --amber-hot-rgb: 255, 168, 232;
+            --ink-rgb: 207, 230, 245;
+            --alert-rgb: 255, 107, 107;
+            --sheen: rgba(255, 255, 255, 0.04);
+            --shade: rgba(0, 0, 0, 0.5);
+            --shade-strong: rgba(0, 0, 0, 0.65);
+            --scanline: rgba(0, 0, 0, 0.3);
+            --vignette: rgba(0, 0, 25, 0.7);
+            --btn-top: #12203a;
+            --btn-mid: #0d1729;
+            --btn-bot: #091120;
+            --btn-hover-top: #1b3054;
+            --btn-hover-mid: #142340;
+            --btn-hover-bot: #0e1830;
+            --btn-ink: #a8d4ec;
+            --btn-ink-hot: #ffffff;
+            --depth: #03060c;
+            --primary-line: #b03f92;
+            --on-primary: #12061a;
+            --danger-ink: #ff9a9a;
+            --danger-line: #7d3636;
+            --danger-hi: #ff6b6b;
+            --danger-lo: #b33c3c;
+            --on-danger: #1a0505;
+            --on-playing: #04121a;
+            --field: #060a14;
+            --placeholder: #5d7389;
+            --track: #0a1220;
+            --track-line: #1d3a52;
+            --tick: #12203a;
+            --thumb-hi: #8ffff5;
+            --thumb-line: #2e5f80;
+            --readout-line: #1d3a52;
+            --badge-line: #1d3a52;
+            --file-btn: #0f1526;
+            --file-btn-hot: #1b3054;
+            --label-ink: #cfe6f5;
+            --font: "Consolas", "Courier New", ui-monospace, monospace;
+            --corner: 12px;
+            --corner-sm: 8px;
+            --radius: 2px;
+            --scan-opacity: 0.55;
+            --vignette-opacity: 1;
+            --corner-clip: polygon( var(--corner) 0, 100% 0, 100% calc(100% - var(--corner)), calc(100% - var(--corner)) 100%, 0 100%, 0 var(--corner) );
+            --corner-clip-sm: polygon( var(--corner-sm) 0, 100% 0, 100% 100%, 0 100%, 0 var(--corner-sm) );
+        }
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 24px 20px 48px;
+            background-color: var(--bg);
+            /* 远处的地平线辉光 */
+            background-image:
+                radial-gradient(120% 70% at 50% 118%, rgba(var(--phos-rgb), 0.10), transparent 62%),
+                radial-gradient(90% 55% at 50% -12%, rgba(var(--amber-rgb), 0.07), transparent 60%);
+            background-attachment: fixed;
+            color: var(--ink);
+            font-family: var(--font);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* ---------- CRT 扫描线 + 暗角（覆盖层，不拦鼠标） ---------- */
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 90;
+        }
+
+        body::before {
+            background: repeating-linear-gradient(
+                to bottom,
+                var(--scanline) 0px,
+                var(--scanline) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            opacity: var(--scan-opacity);
+            mix-blend-mode: multiply;
+        }
+
+        body::after {
+            background: radial-gradient(115% 90% at 50% 50%, transparent 55%, var(--vignette) 100%);
+            opacity: var(--vignette-opacity);
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            max-width: 940px;
+            margin: 0 auto;
+        }
+
+        /* ============================================================
+           面板通用
+           ============================================================ */
+
+        .panel {
+            position: relative;
+            margin-bottom: 20px;
+            padding: 18px 20px 20px;
+            background:
+                linear-gradient(180deg, var(--sheen), transparent 40%),
+                var(--panel);
+            border: 1px solid var(--line);
+            /* 四角切角，机箱感（切角大小由 --corner 控制，换肤可改） */
+            clip-path: var(--corner-clip);
+            box-shadow:
+                0 0 0 1px var(--shade-strong),
+                0 0 26px rgba(var(--phos-rgb), 0.05) inset;
+        }
+
+        .panel::before {
+            /* 机箱铭牌 */
+            content: attr(data-label);
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 3px 12px 4px;
+            background: var(--line);
+            color: var(--label-ink);
+            font-size: 10px;
+            letter-spacing: 2.4px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .panel > *:first-child {
+            margin-top: 18px;
+        }
+
+        /* ============================================================
+           标题区
+           ============================================================ */
+
+        .masthead {
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            color: var(--amber);
+            font-size: clamp(22px, 4.4vw, 34px);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-shadow:
+                0 0 6px rgba(var(--amber-rgb), 0.55),
+                0 0 22px rgba(var(--amber-rgb), 0.22);
+            animation: flicker 5.5s infinite steps(1);
+        }
+
+        @keyframes flicker {
+            0%, 96%, 100% { opacity: 1; }
+            96.5%         { opacity: 0.72; }
+            97%           { opacity: 1; }
+            97.5%         { opacity: 0.85; }
+        }
+
+        .masthead .sub {
+            color: var(--ink-dim);
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* ============================================================
+           状态行 / 自检日志
+           ============================================================ */
+
+        .statusbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 26px;
+            margin: 14px 0 0;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .statusbar .kv {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .statusbar .k {
+            color: var(--ink-dim);
+            text-transform: uppercase;
+        }
+
+        .statusbar .v {
+            color: var(--phos-hot);
+            text-shadow: 0 0 8px rgba(var(--phos-hot-rgb), 0.35);
+        }
+
+        .bootlog {
+            margin: 12px 0 0;
+            padding: 10px 12px;
+            max-height: 96px;
+            overflow: hidden;
+            background: var(--screen);
+            border: 1px solid var(--readout-line);
+            color: var(--ink-dim);
+            font-size: 11.5px;
+            line-height: 1.75;
+            letter-spacing: 0.4px;
+        }
+
+        .bootlog .ln {
+            opacity: 0;
+            animation: bootline 0.4s forwards;
+        }
+
+        .bootlog .ln.ok::after {
+            content: "OK";
+            float: right;
+            color: var(--phos-hot);
+        }
+
+        .bootlog .ln b {
+            color: var(--amber);
+            font-weight: normal;
+        }
+
+        @keyframes bootline {
+            from { opacity: 0; transform: translateX(-6px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        .bootlog .ln:nth-child(1) { animation-delay: 0.05s; }
+        .bootlog .ln:nth-child(2) { animation-delay: 0.28s; }
+        .bootlog .ln:nth-child(3) { animation-delay: 0.51s; }
+        .bootlog .ln:nth-child(4) { animation-delay: 0.74s; }
+        .bootlog .ln:nth-child(5) { animation-delay: 0.97s; }
+
+        .caret {
+            display: inline-block;
+            width: 8px;
+            height: 13px;
+            background: var(--phos-hot);
+            vertical-align: -2px;
+            animation: blink 1.05s steps(1) infinite;
+        }
+
+        @keyframes blink {
+            0%, 49%   { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        /* ============================================================
+           按钮 —— 航空拨动开关质感
+           ============================================================ */
+
+        button {
+            position: relative;
+            margin: 0;
+            padding: 9px 16px 8px;
+            background:
+                linear-gradient(180deg, var(--btn-top) 0%, var(--btn-mid) 55%, var(--btn-bot) 100%);
+            color: var(--btn-ink);
+            border: 1px solid var(--edge);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 12.5px;
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            cursor: pointer;
+            /* 顶部高光 + 底部厚度 */
+            box-shadow:
+                inset 0 1px 0 rgba(var(--ink-rgb), 0.16),
+                0 2px 0 var(--depth),
+                0 3px 8px var(--shade);
+            transition: background 0.12s, color 0.12s, box-shadow 0.12s, transform 0.06s;
+        }
+
+        button:hover {
+            background:
+                linear-gradient(180deg, var(--btn-hover-top) 0%, var(--btn-hover-mid) 55%, var(--btn-hover-bot) 100%);
+            color: var(--btn-ink-hot);
+            border-color: var(--phos);
+            box-shadow:
+                inset 0 1px 0 rgba(var(--ink-rgb), 0.24),
+                0 0 12px rgba(var(--phos-rgb), 0.30),
+                0 2px 0 var(--depth);
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow:
+                inset 0 2px 5px var(--shade-strong),
+                0 0 0 var(--depth);
+        }
+
+        button:focus-visible {
+            outline: 1px dashed var(--amber);
+            outline-offset: 2px;
+        }
+
+        /* 主控按钮（琥珀） */
+        button.primary {
+            color: var(--amber);
+            border-color: var(--primary-line);
+        }
+
+        button.primary:hover {
+            color: var(--on-primary);
+            background: linear-gradient(180deg, var(--amber-hot), var(--amber));
+            border-color: var(--amber-hot);
+            box-shadow:
+                0 0 16px rgba(var(--amber-rgb), 0.45),
+                0 2px 0 var(--depth);
+            text-shadow: none;
+        }
+
+        /* 危险按钮 */
+        button.danger {
+            color: var(--danger-ink);
+            border-color: var(--danger-line);
+        }
+
+        button.danger:hover {
+            color: var(--on-danger);
+            background: linear-gradient(180deg, var(--danger-hi), var(--danger-lo));
+            border-color: var(--danger-hi);
+            box-shadow: 0 0 14px rgba(var(--alert-rgb), 0.45), 0 2px 0 var(--depth);
+        }
+
+        button.tiny {
+            padding: 5px 10px 4px;
+            font-size: 10.5px;
+            letter-spacing: 1.2px;
+        }
+
+        /* 通道按钮的「播放中」态 */
+        button.playing {
+            color: var(--on-playing);
+            background: linear-gradient(180deg, var(--phos-hot), var(--phos));
+            border-color: var(--phos-hot);
+            box-shadow:
+                0 0 18px rgba(var(--phos-rgb), 0.55),
+                0 2px 0 var(--depth);
+            text-shadow: none;
+        }
+
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* ============================================================
+           声音通道
+           ============================================================ */
+
+        #soundList {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .channel {
+            display: grid;
+            grid-template-columns: 92px 150px 1fr 58px;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 14px;
+            background:
+                linear-gradient(90deg, rgba(var(--phos-rgb), 0.045), transparent 45%),
+                var(--panel-2);
+            border: 1px solid var(--track-line);
+            border-left: 3px solid var(--line);
+            clip-path: var(--corner-clip-sm);
+            transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+        }
+
+        .channel:hover {
+            border-color: var(--line);
+            box-shadow: 0 0 20px rgba(var(--phos-rgb), 0.09) inset;
+        }
+
+        .channel.is-on {
+            border-left-color: var(--phos-hot);
+            box-shadow:
+                0 0 22px rgba(var(--phos-rgb), 0.14) inset,
+                0 0 12px rgba(var(--phos-rgb), 0.10);
+        }
+
+        .channel .id {
+            color: var(--ink-dim);
+            font-size: 10.5px;
+            letter-spacing: 1.4px;
+        }
+
+        .channel .id .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin-right: 7px;
+            border-radius: 50%;
+            background: var(--led-off);
+            border: 1px solid var(--badge-line);
+            vertical-align: 1px;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+
+        .channel.is-on .id .dot {
+            background: var(--phos-hot);
+            box-shadow: 0 0 10px var(--phos-hot);
+        }
+
+        .channel .name {
+            color: var(--amber);
+            font-size: 13.5px;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .channel .meter-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* --- LED 电平条 --- */
+        .meter {
+            display: flex;
+            flex: 1;
+            gap: 3px;
+            min-width: 120px;
+        }
+
+        .meter i {
+            flex: 1;
+            height: 14px;
+            background: var(--led-off);
+            border: 1px solid var(--tick);
+            transition: background 0.08s, box-shadow 0.08s;
+        }
+
+        .meter i.on {
+            background: var(--phos);
+            box-shadow: 0 0 8px rgba(var(--phos-rgb), 0.65);
+        }
+
+        .meter i.on.hot {
+            background: var(--amber-hot);
+            box-shadow: 0 0 9px rgba(var(--amber-hot-rgb), 0.8);
+        }
+
+        .meter i.on.peak {
+            background: var(--alert);
+            box-shadow: 0 0 10px rgba(var(--alert-rgb), 0.85);
+        }
+
+        /* --- 数字读数 --- */
+        .readout {
+            min-width: 62px;
+            padding: 3px 6px;
+            background: var(--screen);
+            border: 1px solid var(--readout-line);
+            color: var(--phos-hot);
+            font-size: 12px;
+            text-align: right;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(var(--phos-hot-rgb), 0.4);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* --- 滑块 --- */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 26px;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            background:
+                repeating-linear-gradient(90deg, var(--tick) 0 5px, transparent 5px 8px),
+                var(--track);
+            border: 1px solid var(--track-line);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 24px;
+            margin-top: -9px;
+            background: linear-gradient(180deg, var(--thumb-hi), var(--amber));
+            border: 1px solid var(--thumb-line);
+            box-shadow: 0 0 10px rgba(var(--amber-rgb), 0.5);
+        }
+
+        input[type="range"]::-moz-range-track {
+            height: 8px;
+            background: var(--track);
+            border: 1px solid var(--track-line);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 13px;
+            height: 23px;
+            border-radius: 0;
+            background: linear-gradient(180deg, var(--thumb-hi), var(--amber));
+            border: 1px solid var(--thumb-line);
+        }
+
+        input[type="range"]:focus-visible {
+            outline: 1px dashed var(--amber);
+            outline-offset: 3px;
+        }
+
+        /* ============================================================
+           表单控件
+           ============================================================ */
+
+        input[type="text"],
+        select {
+            padding: 9px 11px;
+            background-color: var(--field);
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: 1px;
+            font-family: inherit;
+            font-size: 13px;
+            letter-spacing: 0.8px;
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--placeholder);
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--phos);
+            box-shadow: 0 0 0 1px rgba(var(--phos-rgb), 0.3), 0 0 14px rgba(var(--phos-rgb), 0.16) inset;
+        }
+
+        input[type="text"] {
+            width: min(100%, 340px);
+        }
+
+        select {
+            min-width: 220px;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            max-width: 100%;
+            padding: 9px;
+            background: var(--screen);
+            border: 1px dashed var(--line);
+            color: var(--ink-dim);
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button {
+            margin-right: 12px;
+            padding: 6px 12px;
+            background: var(--file-btn);
+            color: var(--btn-ink);
+            border: 1px solid var(--edge);
+            font-family: inherit;
+            font-size: 11.5px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: var(--file-btn-hot);
+            color: var(--btn-ink-hot);
+        }
+
+        /* ============================================================
+           界面风格选择
+           ============================================================ */
+
+        .skin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 18px 0 12px;
+        }
+
+        .skin {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding: 10px 12px 12px;
+            background: var(--screen);
+            color: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: none;
+            text-align: left;
+            text-transform: none;
+            letter-spacing: 0.6px;
+            cursor: pointer;
+        }
+
+        .skin:hover {
+            background: var(--panel-2);
+            color: var(--ink);
+            border-color: var(--phos);
+            box-shadow: none;
+        }
+
+        .skin.is-active {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 1px rgba(var(--amber-rgb), 0.55);
+        }
+
+        .skin-swatch {
+            display: flex;
+            gap: 5px;
+        }
+
+        .skin-swatch i {
+            width: 18px;
+            height: 10px;
+            border: 1px solid var(--line);
+        }
+
+        .skin-name {
+            font-size: 12.5px;
+            letter-spacing: 1.2px;
+        }
+
+        .skin-desc {
+            font-size: 10.5px;
+            color: var(--ink-dim);
+        }
+
+
+        /* ============================================================
+           布局辅助
+           ============================================================ */
+
+        h2 {
+            margin: 0 0 14px;
+            color: var(--phos);
+            font-size: 13px;
+            font-weight: normal;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        h2::before {
+            content: "▍";
+            margin-right: 8px;
+            color: var(--amber);
+        }
+
+        hr {
+            height: 1px;
+            margin: 26px 0;
+            border: 0;
+            background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 12px);
+        }
+
+        .stack {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stack + .stack {
+            margin-top: 14px;
+        }
+
+        small {
+            color: var(--ink-dim);
+            font-size: 11.5px;
+            letter-spacing: 0.6px;
+        }
+
+        /* ---------- 底部铭牌 ---------- */
+        .footer {
+            margin-top: 26px;
+            color: var(--placeholder);
+            font-size: 10.5px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* ---------- 窄屏 ---------- */
+        @media (max-width: 720px) {
+            .channel {
+                grid-template-columns: 1fr 58px;
+                grid-template-areas:
+                    "id   id"
+                    "name name"
+                    "meter readout";
+                gap: 10px 12px;
+            }
+
+            .channel .id       { grid-area: id; }
+            .channel .name     { grid-area: name; }
+            .channel .meter-wrap { grid-area: meter; }
+            .channel .readout  { grid-area: readout; }
+
+            input[type="text"],
+            select {
+                width: 100%;
+                min-width: 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            h1,
+            .caret,
+            .bootlog .ln {
+                animation: none;
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <div class="app">
+
+        <!-- ==================== 标题区 ==================== -->
+        <header class="masthead">
+            <h1>Sound Mixer</h1>
+            <div class="sub">SND&#8209;MXR &nbsp;//&nbsp; 环境噪音合成终端 &nbsp;//&nbsp; REV 1985.11</div>
+
+            <div class="statusbar">
+                <span class="kv"><span class="k">通道</span><span class="v" id="stChannels">03</span></span>
+                <span class="kv"><span class="k">在线</span><span class="v" id="stRunning">00</span></span>
+                <span class="kv"><span class="k">状态</span><span class="v" id="stState">待机</span></span>
+            </div>
+
+            <div class="bootlog" id="bootlog">
+                <div class="ln ok">系统自检 <b>MEM 640K</b></div>
+                <div class="ln ok">音频引擎 <b id="bootEngine">WEB AUDIO</b></div>
+                <div class="ln ok">载入通道表 <b id="bootChannels">—</b></div>
+                <div class="ln ok">预设存储挂载 <b>LOCALSTORAGE</b></div>
+                <div class="ln">就绪<span class="caret"></span></div>
+            </div>
+        </header>
+
+
+        <!-- ==================== 主控台 ==================== -->
+        <main class="panel" data-label="控制台 / CONSOLE">
+
+            <div class="btn-row">
+                <button class="primary" onclick="playAll()">▶ 全部播放</button>
+                <button onclick="pauseAll()">❚❚ 全部暂停</button>
+                <button class="tiny" onclick="muteAll()">静音全部</button>
+            </div>
+
+            <div id="soundList"></div>
+
+        </main>
+
+
+        <!-- ==================== 添加声音 ==================== -->
+        <section class="panel" data-label="装载舱 / UPLOAD">
+
+            <h2>添加声音</h2>
+
+            <div class="stack">
+                <input type="file" id="fileInput" accept="audio/*" multiple>
+            </div>
+
+            <div class="stack">
+                <button onclick="addSounds()">⤒ 装载所选音频</button>
+                <small>支持 mp3 / wav / ogg，可多选；装载后自动循环</small>
+            </div>
+
+        </section>
+
+
+        <!-- ==================== 预设 ==================== -->
+        <section class="panel" data-label="预设库 / MEMORY">
+
+            <h2>预设</h2>
+
+            <div class="stack">
+                <input
+                    type="text"
+                    id="presetName"
+                    placeholder="预设名称，例如：雨夜工厂"
+                >
+                <button class="primary" onclick="savePreset()">保存当前预设</button>
+            </div>
+
+            <hr>
+
+            <div class="stack">
+                <select id="presetSelect">
+                    <option value="">选择一个预设</option>
+                </select>
+                <button onclick="loadPreset()">加载</button>
+                <button class="danger" onclick="deletePreset()">删除</button>
+            </div>
+
+        </section>
+
+
+        <!-- ==================== 界面风格 ==================== -->
+        <section class="panel" data-label="界面风格 / SKIN">
+
+            <h2>界面风格</h2>
+
+            <div class="skin-grid" id="skinGrid"></div>
+
+            <small>点选立刻生效，并记住在这台设备上。</small>
+
+        </section>
+
+
+        <div class="footer">SND-MXR-1985 · 白噪音环境合成终端 · 全部音频本地播放</div>
+
+    </div>
+
+
+    <script>
+        // =========================================
+        // 声音数据
+        // =========================================
+
+        // 所有音频文件都放在 sounds/ 子文件夹里，要改位置只需改这一行
+        const AUDIO_DIR = "sounds/";
+
+        // =========================================
+        // 音频清单
+        // =========================================
+        //
+        // 每条音频统一用这 5 个字段描述，新增音频时照着复制一份即可：
+        //
+        //     id        唯一标识，不要和别的重复
+        //     name      界面上显示的名字
+        //     fileName  sounds/ 里的文件名
+        //     volume    音量，0 到 1（0.5 即 50%）
+        //     loop      是否循环播放
+        //
+        // 播放用的 audio 对象不用自己写，下面的初始化会自动创建。
+        //
+        const sounds = [
+            {
+                id: "sound-001",
+                name: "雨声",
+                fileName: "rain.mp3",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-002",
+                name: "无线电",
+                fileName: "radio.mp3",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-003",
+                name: "机械嗡鸣",
+                fileName: "machine.mp3",
+                volume: 0.5,
+                loop: true
+            },
+                //GregTech?
+            {
+                id: "sound-004",
+                name: "电弧炉",
+                fileName: "arc.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-005",
+                name: "装配厂",
+                fileName: "assembler.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-006",
+                name: "洗矿厂",
+                fileName: "bath.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-007",
+                name: "电力高炉",
+                fileName: "boiler.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-008",
+                name: "离心机",
+                fileName: "centrifuge.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-009",
+                name: "反应釜",
+                fileName: "chemical.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-010",
+                name: "内燃引擎",
+                fileName: "combustion.ogg",
+                volume: 0.5,
+                loop: true
+            },
+            {
+                id: "sound-011",
+                name: "压缩机",
+                fileName: "compressor.ogg",
+                volume: 0.5,
+                loop: true
+            }
+        ];
+
+
+        // =========================================
+        // 音频引擎
+        // =========================================
+        //
+        // 为什么不用 <audio> 标签的 loop：
+        //   它的循环不是样本级精确的。播到结尾时，浏览器要把播放位置跳回开头、
+        //   并重新启动解码输出管线，这个往返要几十毫秒，听感上就是「卡一下」。
+        //   这跟音频格式无关——MP3 / OGG / WAV 都一样。
+        //   Web Audio 的 AudioBufferSourceNode.loop 在音频线程里直接循环，
+        //   没有跳转，所以是真正无缝的。
+        //
+        // 注意：直接双击打开（file://）时，浏览器不允许网页读取本地音频文件，
+        //   这时会自动退回 <audio> 标签播放——能出声，但循环会有那个停顿。
+        //   想要无缝循环，请通过网址访问（或起个本地服务）。
+
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+
+        // file:// 下读取本地文件会被浏览器拦掉，直接走退回方案，省得白试一次
+        const LOCAL_FILE_MODE = location.protocol === "file:";
+
+        let audioCtx = null;
+
+
+        // 补齐每条音频的运行期字段
+        sounds.forEach(sound => {
+
+            sound.url = AUDIO_DIR + sound.fileName;
+            sound.volume = typeof sound.volume === "number" ? sound.volume : 0.5;
+            sound.loop = sound.loop !== false;
+
+            sound.playing = false;   // 是否正在出声
+            sound.offset = 0;        // 暂停时记下的播放位置
+            sound.status = "loading";
+
+        });
+
+
+        // 创建 / 恢复音频上下文。浏览器要求由用户操作触发才能出声，
+        // 所以这里只做「唤醒」，真正的播放由点击驱动。
+        function ensureAudioContext() {
+
+            if (!AudioCtor) {
+                return null;
+            }
+
+            if (!audioCtx) {
+
+                try {
+                    audioCtx = new AudioCtor();
+                } catch (e) {
+                    return null;
+                }
+
+            }
+
+            if (audioCtx.state === "suspended") {
+                audioCtx.resume();
+            }
+
+            return audioCtx;
+
+        }
+
+
+        // 解码：优先用 Promise 形式，老浏览器退回回调形式
+        function decodeAudio(ctx, arrayBuffer) {
+
+            return new Promise((resolve, reject) => {
+
+                const result = ctx.decodeAudioData(arrayBuffer, resolve, reject);
+
+                if (result && typeof result.then === "function") {
+                    result.then(resolve, reject);
+                }
+
+            });
+
+        }
+
+
+        // 把一段音频数据解码后挂到这条通道上
+        function attachBuffer(sound, index, dataPromise) {
+
+            const ctx = ensureAudioContext();
+
+            if (!ctx) {
+                useElementFallback(sound, index, sound.url);
+                return;
+            }
+
+            sound.status = "loading";
+
+            dataPromise
+                .then(buffer => decodeAudio(ctx, buffer))
+                .then(decoded => {
+
+                    sound.buffer = decoded;
+                    sound.status = "ready";
+
+                    // 每条通道一个 GainNode，音量改这里
+                    sound.gain = ctx.createGain();
+                    sound.gain.gain.value = sound.volume;
+                    sound.gain.connect(ctx.destination);
+
+                    if (channelNotice.get(index) === "buffering") {
+                        channelNotice.delete(index);
+                    }
+
+                    syncChannel(sound, index);
+
+                    // 用户已经点过播放、当时还没准备好：现在补上
+                    if (sound.wantPlay) {
+                        sound.wantPlay = false;
+                        startSound(sound, index);
+                    }
+
+                })
+                .catch(() => {
+
+                    // 解码不了（例如 file:// 下取不到文件），退回 <audio> 标签
+                    useElementFallback(sound, index, sound.url);
+
+                });
+
+        }
+
+
+        // 载入内置音频
+        function loadSound(sound, index) {
+
+            sound.playing = false;
+            sound.offset = 0;
+
+            if (LOCAL_FILE_MODE) {
+                useElementFallback(sound, index, sound.url);
+                return;
+            }
+
+            attachBuffer(sound, index, fetch(sound.url).then(response => {
+
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+
+                return response.arrayBuffer();
+
+            }));
+
+        }
+
+
+        // 退回 <audio> 标签播放（能出声，但循环会有停顿）
+        function useElementFallback(sound, index, url) {
+
+            if (sound.audio) {
+                return;
+            }
+
+            const audio = new Audio(url);
+
+            audio.loop = sound.loop;
+            audio.volume = sound.volume;
+            audio.preload = "auto";
+
+            audio.addEventListener("playing", () => {
+                sound.playing = true;
+                channelNotice.delete(index);
+                syncChannel(sound, index);
+                updateStatus();
+            });
+
+            audio.addEventListener("pause", () => {
+                sound.playing = false;
+                syncChannel(sound, index);
+                updateStatus();
+            });
+
+            audio.addEventListener("waiting", () => {
+                channelNotice.set(index, "buffering");
+                syncChannel(sound, index);
+            });
+
+            audio.addEventListener("error", () => {
+                sound.status = "error";
+                channelNotice.set(index, "error");
+                syncChannel(sound, index);
+            });
+
+            sound.audio = audio;
+            sound.status = "ready";
+
+            audio.load();
+
+            syncChannel(sound, index);
+
+        }
+
+
+        // 这条通道现在是否在出声
+        function isSoundPlaying(sound) {
+
+            if (sound.audio) {
+                return !sound.audio.paused;
+            }
+
+            return sound.playing === true;
+
+        }
+
+
+        // 设置音量（同时照顾 Web Audio 与退回模式）
+        function setVolume(sound, value) {
+
+            sound.volume = value;
+
+            if (sound.gain) {
+                sound.gain.gain.value = value;
+            }
+
+            if (sound.audio) {
+                sound.audio.volume = value;
+            }
+
+        }
+
+        // 电平条格数
+        const METER_SEGMENTS = 18;
+
+        // 每条通道的临时提示状态：index -> "buffering" | "error"
+        const channelNotice = new Map();
+
+        // 把用户输入安全地放进 HTML
+        // （预设名、上传的文件名都可能含 < > " 等特殊字符）
+        function escapeHtml(text) {
+
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+
+        }
+
+        // 给动态添加的音频生成唯一 id
+        function makeSoundId() {
+
+            return "snd-" +
+                Date.now().toString(36) + "-" +
+                Math.random().toString(36).slice(2, 8);
+
+        }
+
+
+        // =========================================
+        // 面板状态
+        // =========================================
+
+        function updateStatus() {
+
+            const running = sounds.filter(s => isSoundPlaying(s)).length;
+
+            document.getElementById("stChannels").textContent =
+                String(sounds.length).padStart(2, "0");
+
+            document.getElementById("stRunning").textContent =
+                String(running).padStart(2, "0");
+
+            document.getElementById("stState").textContent =
+                running === 0 ? "待机" : (running === sounds.length ? "全线输出" : "部分输出");
+
+        }
+
+
+        // =========================================
+        // 显示声音列表
+        // =========================================
+
+        function renderSounds() {
+
+            const list = document.getElementById("soundList");
+
+            list.innerHTML = "";
+
+            sounds.forEach((sound, index) => {
+
+                const volume = Math.round(sound.volume * 100);
+
+                const div = document.createElement("div");
+
+                div.className = "channel";
+
+                div.dataset.index = index;
+
+                // 电平条
+                let segments = "";
+
+                for (let i = 0; i < METER_SEGMENTS; i++) {
+                    segments += "<i></i>";
+                }
+
+                // 文件名 / 预设名可能含特殊字符，写进 HTML 前先转义
+                const safeName = escapeHtml(sound.name);
+
+                div.innerHTML = `
+                    <span class="id"><span class="dot"></span>CH${String(index + 1).padStart(2, "0")}</span>
+
+                    <span class="name" title="${safeName}">${safeName}</span>
+
+                    <span class="meter-wrap">
+                        <span class="meter">${segments}</span>
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value="${volume}"
+                            aria-label="${safeName} 音量"
+                            oninput="changeVolume(${index}, this.value)"
+                        >
+                    </span>
+
+                    <span class="readout" id="volume-${index}">${volume}%</span>
+
+                    <button
+                        class="tiny"
+                        id="toggle-${index}"
+                        onclick="toggleSound(${index})"
+                    >▶ 播放</button>
+                `;
+
+                list.appendChild(div);
+
+            });
+
+            // 恢复每条通道的按钮文字与电平
+            sounds.forEach((sound, index) => {
+
+                syncChannel(sound, index);
+
+                paintMeter(index, sound.volume);
+
+            });
+
+            updateStatus();
+
+        }
+
+
+        // =========================================
+        // 同步单条通道的显示
+        // =========================================
+
+        function syncChannel(sound, index) {
+
+            const row = document.querySelector(`.channel[data-index="${index}"]`);
+
+            if (!row) {
+                return;
+            }
+
+            const button = document.getElementById("toggle-" + index);
+
+            const notice = channelNotice.get(index);
+
+            const playing = isSoundPlaying(sound);
+
+            row.classList.toggle("is-on", playing);
+
+            if (button) {
+
+                if (notice === "error") {
+
+                    button.textContent = "载入失败";
+                    button.classList.remove("playing");
+
+                } else if (notice === "buffering") {
+
+                    button.textContent = "缓冲中…";
+                    button.classList.remove("playing");
+
+                } else {
+
+                    button.textContent = playing ? "❚❚ 暂停" : "▶ 播放";
+                    button.classList.toggle("playing", playing);
+
+                }
+
+            }
+
+        }
+
+
+        // =========================================
+        // 电平条
+        // =========================================
+
+        function paintMeter(index, volume) {
+
+            const row = document.querySelector(`.channel[data-index="${index}"]`);
+
+            if (!row) {
+                return;
+            }
+
+            const segs = row.querySelectorAll(".meter i");
+
+            const lit = Math.round(volume * METER_SEGMENTS);
+
+            segs.forEach((seg, i) => {
+
+                seg.classList.toggle("on", i < lit);
+
+                seg.classList.toggle("hot", i < lit && i >= METER_SEGMENTS * 0.72);
+
+                seg.classList.toggle("peak", i < lit && i >= METER_SEGMENTS * 0.9);
+
+            });
+
+        }
+
+
+        // =========================================
+        // 播放 / 暂停
+        // =========================================
+
+        // 开始播放。Web Audio 的 source 是一次性的，每次播放都要新建一个。
+        function startSound(sound, index) {
+
+            // 退回 <audio> 标签的情况
+            if (sound.audio) {
+
+                const promise = sound.audio.play();
+
+                // 浏览器可能因自动播放策略拒绝，静默处理避免控制台报错
+                if (promise && typeof promise.catch === "function") {
+                    promise.catch(() => {});
+                }
+
+                return;
+
+            }
+
+            const ctx = ensureAudioContext();
+
+            // 还没解码完：先记住用户想播，准备好后自动开始
+            if (!ctx || !sound.buffer) {
+
+                sound.wantPlay = true;
+
+                channelNotice.set(
+                    index,
+                    sound.status === "error" ? "error" : "buffering"
+                );
+
+                syncChannel(sound, index);
+                return;
+
+            }
+
+            if (sound.playing) {
+                return;
+            }
+
+            const source = ctx.createBufferSource();
+
+            source.buffer = sound.buffer;
+            source.loop = sound.loop;
+            source.connect(sound.gain);
+
+            // 从上次暂停的位置接着播（循环时取余）
+            const duration = sound.buffer.duration || 0;
+            const offset = duration > 0 ? (sound.offset % duration) : 0;
+
+            source.start(0, offset);
+
+            sound.source = source;
+            sound.startedAt = ctx.currentTime;
+            sound.playing = true;
+            sound.wantPlay = false;
+
+            channelNotice.delete(index);
+            syncChannel(sound, index);
+            updateStatus();
+
+        }
+
+
+        // 暂停。记下当前位置，下次接着播。
+        function stopSound(sound, index) {
+
+            if (sound.audio) {
+                sound.audio.pause();
+                return;
+            }
+
+            if (!sound.playing || !sound.source || !audioCtx) {
+                return;
+            }
+
+            const duration = sound.buffer.duration || 0;
+            const elapsed = audioCtx.currentTime - sound.startedAt;
+
+            sound.offset = duration > 0
+                ? ((sound.offset || 0) + elapsed) % duration
+                : 0;
+
+            try {
+                sound.source.stop();
+            } catch (e) {}
+
+            try {
+                sound.source.disconnect();
+            } catch (e) {}
+
+            sound.source = null;
+            sound.playing = false;
+
+            syncChannel(sound, index);
+            updateStatus();
+
+        }
+
+
+        // 请求播放：还没准备好时先亮出「缓冲中…」，
+        // 避免朋友点了按钮没反应、误以为坏了
+        function requestPlay(index) {
+
+            const sound = sounds[index];
+
+            if (isSoundPlaying(sound)) {
+                return;
+            }
+
+            startSound(sound, index);
+
+        }
+
+
+        function toggleSound(index) {
+
+            const sound = sounds[index];
+
+            if (isSoundPlaying(sound)) {
+
+                stopSound(sound, index);
+
+            } else {
+
+                requestPlay(index);
+
+            }
+
+        }
+
+
+        // =========================================
+        // 修改音量
+        // =========================================
+
+        function changeVolume(index, value) {
+
+            const sound = sounds[index];
+
+            setVolume(sound, value / 100);
+
+            document.getElementById("volume-" + index).textContent = value + "%";
+
+            paintMeter(index, value / 100);
+
+            syncChannel(sound, index);
+
+            updateStatus();
+
+        }
+
+
+        // =========================================
+        // 全部播放 / 全部暂停 / 静音
+        // =========================================
+
+        function playAll() {
+
+            sounds.forEach((sound, index) => {
+                requestPlay(index);
+            });
+
+        }
+
+
+        function pauseAll() {
+
+            sounds.forEach((sound, index) => {
+                if (isSoundPlaying(sound)) {
+                    stopSound(sound, index);
+                }
+            });
+
+        }
+
+
+        function muteAll() {
+
+            sounds.forEach((sound, index) => {
+
+                setVolume(sound, 0);
+
+                const slider = document.querySelector(`.channel[data-index="${index}"] input[type="range"]`);
+
+                if (slider) {
+                    slider.value = 0;
+                }
+
+                document.getElementById("volume-" + index).textContent = "0%";
+
+                paintMeter(index, 0);
+
+            });
+
+            updateStatus();
+
+        }
+
+
+        // =========================================
+        // 动态添加声音
+        // =========================================
+
+        function addSounds() {
+
+            const input = document.getElementById("fileInput");
+
+            if (input.files.length === 0) {
+                alert("请先选择音频文件");
+                return;
+            }
+
+            const added = [];
+
+            for (const file of input.files) {
+
+                // 字段结构与内置音频保持一致
+                const sound = {
+
+                    id: makeSoundId(),
+                    name: file.name,
+                    fileName: "",
+                    volume: 0.5,
+                    loop: true,
+
+                    // 运行期字段
+                    url: URL.createObjectURL(file),
+                    playing: false,
+                    offset: 0,
+                    status: "loading"
+
+                };
+
+                sounds.push(sound);
+                added.push({ sound: sound, file: file });
+
+            }
+
+            renderSounds();
+
+            // 新加入的音频立刻解码
+            added.forEach(entry => {
+
+                const index = sounds.indexOf(entry.sound);
+
+                // 直接从内存里的文件解码，不用再走一次网络
+                const data = entry.file.arrayBuffer
+                    ? entry.file.arrayBuffer()
+                    : fetch(entry.sound.url).then(r => r.arrayBuffer());
+
+                attachBuffer(entry.sound, index, data);
+
+            });
+
+            // 清空选择框
+            input.value = "";
+
+        }
+
+
+        // =========================================
+        // 预设
+        // =========================================
+
+        function savePreset() {
+
+            const name =
+                document.getElementById("presetName").value.trim();
+
+            if (name === "") {
+
+                alert("请先输入预设名称");
+
+                return;
+
+            }
+
+            // 读取以前保存的预设
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            // 保存每个声音的音量
+            const preset = {};
+
+            sounds.forEach(sound => {
+
+                preset[sound.name] = sound.volume;
+
+            });
+
+            presets[name] = preset;
+
+            // 保存到浏览器
+            localStorage.setItem(
+                "soundPresets",
+                JSON.stringify(presets)
+            );
+
+            loadPresetList();
+
+            document.getElementById("presetName").value = "";
+
+            alert("预设已保存");
+
+        }
+
+
+        // =========================================
+        // 读取预设列表
+        // =========================================
+
+        function loadPresetList() {
+
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            const select =
+                document.getElementById("presetSelect");
+
+            select.innerHTML =
+                '<option value="">选择一个预设</option>';
+
+            for (const name in presets) {
+
+                const option =
+                    document.createElement("option");
+
+                option.value = name;
+                option.textContent = name;
+
+                select.appendChild(option);
+
+            }
+
+        }
+
+
+        // =========================================
+        // 加载预设
+        // =========================================
+
+        function loadPreset() {
+
+            const name =
+                document.getElementById("presetSelect").value;
+
+            if (name === "") {
+                return;
+            }
+
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            const preset = presets[name];
+
+            sounds.forEach(sound => {
+
+                if (preset[sound.name] !== undefined) {
+
+                    setVolume(sound, preset[sound.name]);
+
+                }
+
+            });
+
+            renderSounds();
+
+        }
+
+
+        // =========================================
+        // 删除预设
+        // =========================================
+
+        function deletePreset() {
+
+            const name =
+                document.getElementById("presetSelect").value;
+
+            if (name === "") {
+                return;
+            }
+
+            const presets =
+                JSON.parse(
+                    localStorage.getItem("soundPresets") || "{}"
+                );
+
+            delete presets[name];
+
+            localStorage.setItem(
+                "soundPresets",
+                JSON.stringify(presets)
+            );
+
+            loadPresetList();
+
+        }
+
+
+        // =========================================
+        // 界面风格（变量层换肤）
+        // =========================================
+
+        // 想加新皮肤：在这里加一条，并在 CSS 里复制一整块 [data-theme="..."]
+        const THEMES = [
+            {
+                id: "terminal",
+                name: "终端绿",
+                desc: "1985 机载终端（默认）",
+                swatch: ["#a8c78a", "#d0b16f", "#101511"]
+            },
+            {
+                id: "amber",
+                name: "琥珀单色",
+                desc: "老式琥珀 CRT",
+                swatch: ["#d8a848", "#ffd071", "#14100a"]
+            },
+            {
+                id: "minimal",
+                name: "简约浅色",
+                desc: "无扫描线、无切角",
+                swatch: ["#2f6b4f", "#9a6b1f", "#f7f6f2"]
+            },
+            {
+                id: "neon",
+                name: "霓虹青",
+                desc: "赛博朋克冷色",
+                swatch: ["#35e0d8", "#ff5fd2", "#0a0f1c"]
+            }
+        ];
+
+        const THEME_KEY = "uiTheme";
+
+
+        function currentTheme() {
+
+            return document.documentElement.dataset.theme || "terminal";
+
+        }
+
+
+        function applyTheme(id) {
+
+            document.documentElement.dataset.theme = id;
+
+            try {
+                localStorage.setItem(THEME_KEY, id);
+            } catch (e) {
+                // 隐私模式下可能写不进去，忽略即可
+            }
+
+            renderSkins();
+
+        }
+
+
+        function renderSkins() {
+
+            const grid = document.getElementById("skinGrid");
+
+            if (!grid) {
+                return;
+            }
+
+            const active = currentTheme();
+
+            grid.innerHTML = "";
+
+            THEMES.forEach(theme => {
+
+                const button = document.createElement("button");
+
+                button.type = "button";
+                button.className = "skin" + (theme.id === active ? " is-active" : "");
+                button.setAttribute("aria-pressed", theme.id === active ? "true" : "false");
+                button.setAttribute("aria-label", "界面风格：" + theme.name);
+
+                const swatches = theme.swatch
+                    .map(color => '<i style="background:' + color + '"></i>')
+                    .join("");
+
+                button.innerHTML =
+                    '<span class="skin-swatch">' + swatches + '</span>' +
+                    '<span class="skin-name">' + escapeHtml(theme.name) + '</span>' +
+                    '<span class="skin-desc">' + escapeHtml(theme.desc) + '</span>';
+
+                button.onclick = () => applyTheme(theme.id);
+
+                grid.appendChild(button);
+
+            });
+
+        }
+
+
+        // =========================================
+        // 初始化
+        // =========================================
+
+        renderSounds();
+
+        loadPresetList();
+
+        renderSkins();
+
+
+        // 自检日志：写清实际的通道数和实际启用的音频引擎
+        const bootEngine = document.getElementById("bootEngine");
+
+        if (bootEngine) {
+            bootEngine.textContent = LOCAL_FILE_MODE
+                ? "<audio> 标签（循环有停顿）"
+                : "WEB AUDIO（无缝循环）";
+        }
+
+        const bootChannels = document.getElementById("bootChannels");
+
+        if (bootChannels) {
+            bootChannels.textContent = sounds.length + " 条";
+        }
+
+
+        // =========================================
+        // 开始后台载入音频
+        // =========================================
+        //
+        // 页面一打开就下载并解码，朋友读完界面再点播放时通常已经就绪。
+        // 事件监听只在退回 <audio> 模式时才需要，已写在 useElementFallback 里。
+
+        sounds.forEach((sound, index) => {
+            loadSound(sound, index);
+        });
+
+    </script>
+
+</body>
+
+</html>
